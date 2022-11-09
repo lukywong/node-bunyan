@@ -54,8 +54,10 @@ var OM_INSPECT = 3;
 var OM_SIMPLE = 4;
 var OM_SHORT = 5;
 var OM_BUNYAN = 6;
+var OM_LONG_ONE_LINE = 7;
 var OM_FROM_NAME = {
     'long': OM_LONG,
+    'lole': OM_LONG_ONE_LINE,
     'paul': OM_LONG,  /* backward compat */
     'json': OM_JSON,
     'inspect': OM_INSPECT,
@@ -250,6 +252,7 @@ function printHelp() {
     p('  -o, --output MODE');
     p('                Specify an output mode/format. One of');
     p('                  long: (the default) pretty');
+    p('                  lole: long on one line');
     p('                  json: JSON output, 2-space indent');
     p('                  json-N: JSON output, N-space indent, e.g. "json-4"');
     p('                  bunyan: 0 indented JSON, bunyan\'s native format');
@@ -767,11 +770,15 @@ function handleLogLine(file, line, opts, stylize) {
  */
 function emitRecord(rec, line, opts, stylize) {
     var short = false;
+    var oneline = false;
 
     switch (opts.outputMode) {
     case OM_SHORT:
         short = true;
         /* jsl:fall-thru */
+
+    case OM_LONG_ONE_LINE:
+        oneline = true;
 
     case OM_LONG:
         //    [time] LEVEL: name[/comp]/pid on hostname (src): msg* (extras...)
@@ -1075,8 +1082,16 @@ function emitRecord(rec, line, opts, stylize) {
             (extras.length ? ' (' + extras.join(', ') + ')' : ''), 'none');
         details = stylize(
             (details.length ? details.join('\n    --\n') + '\n' : ''), 'none');
+        if (oneline) {
+            details = details
+            .replace(/[\r\n]/g, '')
+            .replaceAll('  ', '')
+            .replaceAll('    ', ' ') 
+            .replaceAll('    --', ',')
+            + '\n';
+        }
         if (!short)
-            emit(format('%s %s: %s on %s%s:%s%s\n%s',
+            emit(format('%s %s: %s on %s%s:%s%s %s',
                 time,
                 level,
                 nameStr,
